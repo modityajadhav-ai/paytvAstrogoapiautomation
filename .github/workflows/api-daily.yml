@@ -45,8 +45,24 @@ jobs:
           if [ -z "$ENV" ]; then ENV="test"; fi
           echo "value=$ENV" >> "$GITHUB_OUTPUT"
 
+      - name: Install Playwright Chromium
+        run: |
+          chmod +x mvnw
+          ./mvnw -B -ntp dependency:resolve
+          ./mvnw -B -ntp exec:java@playwright-cli \
+            -Dexec.args="install --with-deps chromium"
+
       - name: Run API tests
         env:
+          VRGO_AUTH_USERNAME_TEST: ${{ secrets.VRGO_AUTH_USERNAME_TEST }}
+          VRGO_AUTH_PASSWORD_TEST: ${{ secrets.VRGO_AUTH_PASSWORD_TEST }}
+          VRGO_AUTH_USERNAME: ${{ secrets.VRGO_AUTH_USERNAME }}
+          VRGO_AUTH_PASSWORD: ${{ secrets.VRGO_AUTH_PASSWORD }}
+          VRGO_WEB_BASIC_AUTH_USERNAME: ${{ secrets.VRGO_WEB_BASIC_AUTH_USERNAME }}
+          VRGO_WEB_BASIC_AUTH_PASSWORD: ${{ secrets.VRGO_WEB_BASIC_AUTH_PASSWORD }}
+          VRGO_REFRESH_TOKEN_TEST: ${{ secrets.VRGO_REFRESH_TOKEN_TEST }}
+          VRGO_REFRESH_TOKEN: ${{ secrets.VRGO_REFRESH_TOKEN }}
+          VRGO_BROWSER_AUTH_RECOVERY_ENABLED: 'true'
           VRGO_BEARER_TOKEN: ${{ secrets.VRGO_BEARER_TOKEN }}
           VRGO_X_API_KEY: ${{ secrets.VRGO_X_API_KEY }}
           VRGO_GUEST_BEARER_TOKEN: ${{ secrets.VRGO_GUEST_BEARER_TOKEN }}

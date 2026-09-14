@@ -10,6 +10,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.function.Function;
 
 /**
  * Thread-safe bearer token manager for long TestNG suites (1000+ tests / 15+ minutes).
@@ -34,13 +35,23 @@ public final class VrgoTokenHolder {
     private final Path cacheFilePath;
     private final String profileId;
     private final String profileType;
+    private final Function<EnvironmentConfig, String> browserRecovery;
 
     private String accessToken;
     private String refreshToken;
 
     private VrgoTokenHolder(EnvironmentConfig config) {
+        this(config, VrgoBrowserAuthSupport::recoverRefreshToken, true);
+    }
+
+    VrgoTokenHolder(
+            EnvironmentConfig config,
+            Function<EnvironmentConfig, String> browserRecovery,
+            boolean loadCredentials
+    ) {
         this.config = config;
         this.authClient = new VrgoAuthApiClient(config);
+        this.browserRecovery = browserRecovery;
         this.refreshBufferSeconds = parseLong(
                 firstNonBlank(
                         System.getProperty("vrgo.auth.refresh.buffer.seconds"),
@@ -56,7 +67,9 @@ public final class VrgoTokenHolder {
                 config.getProperty("vrgo.auth.profile.type"),
                 "ADULT"
         );
-        loadCredentials();
+        if (loadCredentials) {
+            loadCredentials();
+        }
     }
 
     public static void initialize(EnvironmentConfig config) {
@@ -195,13 +208,16 @@ public final class VrgoTokenHolder {
         }
     }
 
-    private void ensureValidAccessToken() {
+    void ensureValidAccessToken() {
         if (accessToken != null && !accessToken.isBlank()
                 && !VrgoJwtUtils.isExpiringSoon(accessToken, refreshBufferSeconds)) {
             publishBearerToken(accessToken);
             return;
         }
         if (!hasRefreshCredential()) {
+            if (tryBrowserRecovery()) {
+                return;
+            }
             throw new IllegalStateException(buildMissingCredentialMessage());
         }
         refreshAccessToken();
@@ -235,7 +251,7 @@ public final class VrgoTokenHolder {
     }
 
     private boolean tryBrowserRecovery() {
-        String recovered = VrgoBrowserAuthSupport.recoverRefreshToken(config);
+        String recovered = browserRecovery.apply(config);
         if (recovered == null || recovered.isBlank()) {
             return false;
         }
@@ -352,6 +368,8 @@ public final class VrgoTokenHolder {
                     + "Or set VRGO_REFRESH_TOKEN_" + envName + " / VRGO_REFRESH_TOKEN env var.";
         }
         return "No VRGO refresh token for " + envName + ". Configure ONE of: "
+                + "VRGO_AUTH_USERNAME_" + envName + " + VRGO_AUTH_PASSWORD_" + envName
+                + " for browser auto-login, "
                 + "VRGO_REFRESH_TOKEN_" + envName + " or VRGO_REFRESH_TOKEN (CI), "
                 + VrgoAuthSecretsLoader.environmentSecretsPath() + " (local), "
                 + "legacy secrets/vrgo-auth.local.properties, "
