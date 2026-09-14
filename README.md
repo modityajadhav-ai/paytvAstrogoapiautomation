@@ -102,7 +102,7 @@ Per-environment headers and catalogue ids live under the same files as `vrgo.hea
 
 Content layout identifiers (Movie, TVShow, Series, Boxset) are configured as `vrgo.content.movie`, `vrgo.content.tvshow`, `vrgo.content.series`, `vrgo.content.boxset` so values can differ per environment. In Java, resolve them with `VrgoContentKind.MOVIE.resolve(config)` (see `ContinueWatch` Allure parameters for an example).
 
-**Production:** do not commit bearer tokens or `x-api-key`. `prod.properties` omits `vrgo.x.api.key`; supply `VRGO_X_API_KEY` (and bearer) via CI or local env.
+**Production:** do not commit tokens, passwords, or `x-api-key`. `prod.properties` omits `vrgo.x.api.key`; supply credentials through CI secrets or local environment variables.
 
 ### VRGO auth (all environments)
 
@@ -119,7 +119,7 @@ Each stack has its own secrets file, token cache, and browser login URL:
 
 Copy the matching `secrets/vrgo-auth.<env>.local.properties.example` → remove `.example`, then set `vrgo.refresh.token`, `vrgo.auth.username`, and `vrgo.auth.password` for that stack. Legacy `secrets/vrgo-auth.local.properties` still works as a fallback.
 
-**CI variables** (masked): `VRGO_REFRESH_TOKEN_<ENV>` or generic `VRGO_REFRESH_TOKEN` per job; optional `VRGO_AUTH_USERNAME_<ENV>` / `VRGO_AUTH_PASSWORD_<ENV>` for browser recovery.
+**CI variables** (masked): configure `VRGO_AUTH_USERNAME_<ENV>` / `VRGO_AUTH_PASSWORD_<ENV>` (or the generic names) for browser login. With Playwright Chromium installed, these credentials are sufficient: suite setup logs into the portal, captures a refresh token, and exchanges it for an access token. `VRGO_REFRESH_TOKEN_<ENV>` / `VRGO_REFRESH_TOKEN` remain supported as an optional faster bootstrap.
 
 ```powershell
 # Run load profile
@@ -178,8 +178,11 @@ Workflow: `.github/workflows/api-daily.yml` runs every day at **7:00 AM IST** (`
 | `SMTP_PASSWORD` | SMTP password or app password |
 | `SMTP_FROM` | Sender address |
 | `REPORT_RECIPIENTS` | Comma-separated team emails |
-| `VRGO_BEARER_TOKEN` | Bearer JWT for API calls |
+| `VRGO_AUTH_USERNAME_TEST` | VRGO web portal login (or use `VRGO_AUTH_USERNAME`) |
+| `VRGO_AUTH_PASSWORD_TEST` | VRGO web portal password (or use `VRGO_AUTH_PASSWORD`) |
 | `VRGO_X_API_KEY` | x-api-key header value |
+
+The workflow installs Playwright Chromium with its Linux dependencies before running Maven. On the default `test` profile, suite setup uses the username/password secrets to log in headlessly and capture a refresh token. Optional secrets are `VRGO_WEB_BASIC_AUTH_USERNAME` / `VRGO_WEB_BASIC_AUTH_PASSWORD` when the portal itself uses HTTP basic auth, `VRGO_REFRESH_TOKEN_TEST` / `VRGO_REFRESH_TOKEN` as a refresh-token bootstrap, and `VRGO_BEARER_TOKEN` / `VRGO_GUEST_BEARER_TOKEN` as short-lived bootstrap tokens. Daily authentication does not depend on those bearer or refresh-token secrets.
 
 Emails attach **Extent HTML** (`target/extent-reports/ExtentReport.html`) and the latest **Excel** report. Allure raw results are kept as a workflow artifact for 30 days.
 
