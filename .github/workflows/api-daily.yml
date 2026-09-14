@@ -49,8 +49,7 @@ jobs:
         run: |
           chmod +x mvnw
           ./mvnw -B -ntp dependency:resolve
-          ./mvnw -B -ntp exec:java \
-            -Dexec.mainClass=com.microsoft.playwright.CLI \
+          ./mvnw -B -ntp exec:java@playwright-cli \
             -Dexec.args="install --with-deps chromium"
 
       - name: Run API tests

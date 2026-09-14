@@ -234,6 +234,16 @@
                 </configuration>
                 <executions>
                     <execution>
+                        <id>playwright-cli</id>
+                        <goals>
+                            <goal>java</goal>
+                        </goals>
+                        <configuration>
+                            <mainClass>com.microsoft.playwright.CLI</mainClass>
+                            <classpathScope>compile</classpathScope>
+                        </configuration>
+                    </execution>
+                    <execution>
                         <id>browser-recovery-verify</id>
                         <goals>
                             <goal>java</goal>
